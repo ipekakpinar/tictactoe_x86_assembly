@@ -1,0 +1,529 @@
+
+
+
+
+;ipek akpinar
+;170423822
+;tic-tac-toe
+
+
+
+yazdir macro x, y, renk, string_data   
+;x-y, ana ekranda metnin yazilacagi konum 
+;string_data ekrana yazilacak veri
+
+    LOCAL string_bas, string_atla, string_son  ; yerel degiskenler
+
+    pusha  ;tum verileri stacke attik
+    mov dx,cs
+    mov es,dx   
+    mov ah,13h ;int 10h/ah=13h string yazimi
+    mov al,1 ; string renk icereceginden
+    mov bh,0 ;page number 0
+    mov bl,renk
+    mov cx,offset string_son - offset string_bas ;verinin boyutunu belirledik
+    mov dl,x
+    mov dh,y 
+    mov bp,offset string_bas
+    int 10h
+    popa          
+    
+    jmp string_atla
+    string_bas DB string_data
+    string_son DB 0
+    string_atla:
+endm
+
+
+
+data segment
+    a DB 3 dup(0)
+    b DB 3 dup(0)
+    c DB 3 dup(0);oyun tahtasini temsil eden 3 satirlik diziler
+    ox DB 0  ; O ve X in yerlerini tutar
+    oy DB 0
+    sira DB 1  ;siradaki kisiyi tutar
+    kontrol DB 1   ; oyun bitmis mi kontrol edecegiz x=1,o=2 
+data ends
+
+yerlestir macro v1,v2
+    mov ox,v1
+    mov oy,v2
+endm
+
+
+
+      
+code segment
+    
+    start:
+    mov ax,data ;data segmentini data olarak ayarladik
+    mov ds,ax 
+                               
+    ;oyun alanini yazdirma:
+    yazdir 5,5,0000_1111b," | | " 
+    yazdir 5,7,0000_1111b,"-+-+-"     
+    yazdir 5,9,0000_1111b," | | "
+    yazdir 5,11,0000_1111b,"-+-+-"
+    yazdir 5,13,0000_1111b," | | "  
+    
+    mov ax,0000 ;int 33h/ax=00 fare surucusunu sifirlar                                
+    int 33h     ;ve fare durumunu alir
+    
+    mouseal:  
+        mov ax,0003h;int 33h/ax:0003h
+        int 33h     ;mouse butonunu almak icin
+        cmp bx,01   ;left butona tiklanmis mi bak
+        je dongu
+        jne tekrarla
+            
+            dongu: 
+            call yerlestirme  
+
+            mov kontrol,01h;kontrolde 1 x'i
+            call kazanan  
+            
+            mov kontrol,02h;2 de O yu temsil etsin.
+            call kazanan   ;ikisi icin de kazanma durumu var mi bak
+            
+            tekrarla:
+            jmp mouseal
+            
+            hlt
+               
+      
+    yerlestirme proc near:
+        cmp cx,26h ;mouse interruptinin x'i cx'e yazilir
+        jle iptal 
+        cmp dx,38h  ;ilk satir ise
+        jle ilksatir 
+        cmp dx,58h
+        jle ikincisatir
+        cmp dx,6Eh
+        jle ucuncusatir
+        mov bh,sira
+        
+        ilksatir:
+            cmp cx,33h;[0][0]. indiste mi
+            jle ssc ;00. icin call
+            cmp cx,43h;[0][1]. indiste mi
+            jle sbc
+            cmp cx,55h;[0][2]. indiste mi
+            jle sic
+                    
+            
+            ssc:
+                mov ah,a ;
+                cmp ah,0 ;
+                jne iptal;last
+                ;indis bos degilse atla
+                ;bossa yerlestir
+                yerlestir 5,5      
+                
+                mov ah,sira
+                cmp ah,0 ;baslangic durumu
+                je s
+                jne s1
+                
+                ;sira degistirme
+                s:
+                mov a,1  ;a'nin x old. belirtme 
+                jmp nm ;  164. satir
+                
+                s1:
+                mov a,2  ; a'nin o old. belirtme
+                jmp nm   ;selecte yonlendirme 
+                
+                
+             
+            sbc:
+                mov ah,a+1;[0][1].indis bos mu
+                cmp ah,0 
+                jne iptal
+                yerlestir 7,5 
+            
+                mov ah,sira
+                cmp ah,0  
+                je is;ikinci sira(is)
+                jne is1 
+                
+                is:
+                mov a+1,1
+                jmp nm
+                
+                is1:
+                mov a+1,2
+                jmp nm
+                
+             
+            
+            sic:
+                mov ah,a+2
+                cmp ah,0
+                jne iptal
+                yerlestir 9,5
+                
+                mov ah,sira
+                cmp ah,0
+                je us;ucuncu sira(uc)
+                jne us1
+                
+                us:
+                mov a+2,1
+                jmp nm
+                
+                us1:
+                mov a+2,2
+                jmp nm
+                
+                 
+                    
+                    
+        ikincisatir:
+            
+            cmp cx,33h    
+            jle bsc;[1][0]. call
+            cmp cx,43h
+            jle bbc;[1][1]. call
+            cmp cx,55h
+            jle bic
+            
+            bsc:
+                mov ah,b
+                cmp ah,0
+                jne iptal
+                yerlestir 5,9
+                
+                mov ah,sira
+                cmp ah,0
+                je bis;birinci sira
+                jne bis1
+                
+                bis:
+                mov b,1
+                jmp nm
+                
+                bis1:
+                mov b,2
+                jmp nm
+            
+            
+            bbc:
+                mov ah,b+1
+                cmp ah,0
+                jne iptal
+                yerlestir 7,9
+                
+                mov ah,sira
+                cmp ah,0
+                je iis
+                jne iis1
+                
+                iis:
+                mov b+1,1
+                jmp nm
+                
+                iis1:
+                mov b+1,2
+                jmp nm
+                
+                
+            bic:
+                mov ah,b+2
+                cmp ah,0
+                jne iptal
+                yerlestir 9,9
+                
+                mov ah,sira
+                cmp ah,0
+                je uis
+                jne uis1
+                
+                uis:
+                mov b+2,1
+                jmp nm
+                
+                uis1:
+                mov b+2,2
+                jmp nm
+                
+               
+            
+        ucuncusatir:
+                
+            cmp cx,33h
+            jle isc ; (2,0). call
+            cmp cx,43h
+            jle ibc
+            cmp cx,55h
+            jle iic
+            
+            
+            isc:
+                mov ah,c
+                cmp ah,0
+                jne iptal
+                yerlestir 5,13
+                
+                mov ah,sira
+                cmp ah,0
+                je bus
+                jne bus1
+                
+                bus:
+                mov c,1
+                jmp nm
+                
+                bus1:
+                mov c,2
+                jmp nm                
+                 
+            ibc:
+                mov ah,c+1
+                cmp ah,0
+                jne iptal
+                yerlestir 7,13
+                
+                mov ah,sira
+                cmp ah,0
+                je ius
+                jne ius1
+                
+                ius:
+                mov c+1,1
+                jmp nm
+                
+                ius1:
+                mov c+1,2
+                jmp nm
+                
+                
+            iic:
+                mov ah,c+2
+                cmp ah,0
+                jne iptal
+                yerlestir 9,13
+                
+                mov ah,sira
+                cmp ah,0
+                je uus
+                jne uus1
+                
+                uus:
+                mov c+2,1
+                jmp nm
+                
+                uus1:
+                mov c+2,2
+                jmp nm
+                
+                            
+        nm:
+        mov bh,sira
+        cmp bh,0  
+        jz o
+        jnz x     
+        o:
+        yazdir ox,oy,0000_1111b,"O" 
+        jmp devam
+     
+        x:
+        yazdir ox,oy,0000_1111b,"X"
+        
+      
+      devam:  
+        cmp sira,0h
+        je sdegis
+        jne sdegis1
+        
+        sdegis:
+        mov sira,1h
+        jmp iptal
+        
+        sdegis1:
+        mov sira,0h
+        jmp iptal
+        
+        iptal:
+    Ret
+    endp
+    
+    kazanan proc near:
+        
+        asatirikontrol: 
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,a
+        jne bsatirikontrol   
+        add bx,1
+                  
+        cmp ah,a+1
+        jne bsatirikontrol
+        add bx,1 
+        
+        cmp ah,a+2
+        jne bsatirikontrol   
+        add bx,1
+        
+        cmp bx,3
+        je bitis
+        
+        bsatirikontrol:
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,b
+        jne csatirikontrol   
+        add bx,1
+                  
+        cmp ah,b+1
+        jne csatirikontrol
+        add bx,1 
+        
+        cmp ah,b+2
+        jne csatirikontrol   
+        add bx,1
+        
+        cmp bx,3
+        je bitis
+        
+        csatirikontrol:
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,c
+        jne sutunkontrol   
+        add bx,1
+                  
+        cmp ah,c+1
+        jne sutunkontrol
+        add bx,1 
+        
+        cmp ah,c+2
+        jne sutunkontrol   
+        add bx,1
+        
+        cmp bx,3
+        je bitis
+                 
+        sutunkontrol:      
+          
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,a
+        jne ikincisutunabak   
+        add bx,1
+                  
+        cmp ah,b
+        jne ikincisutunabak
+        add bx,1 
+        
+        cmp ah,c
+        jne ikincisutunabak   
+        add bx,1
+        
+        cmp bx,3
+        je bitis         
+        
+       ikincisutunabak:
+        ;ikinci sutun kontrol
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,a+1
+        jne ucuncusutunabak   
+        add bx,1
+                  
+        cmp ah,b+1
+        jne ucuncusutunabak
+        add bx,1 
+        
+        cmp ah,c+1
+        jne ucuncusutunabak   
+        add bx,1
+        
+        cmp bx,3
+        je bitis         
+          
+        
+        ;ucuncu sutun kontrol
+       ucuncusutunabak:
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,a+2
+        jne capraz1bak   
+        add bx,1
+                  
+        cmp ah,b+2
+        jne capraz1bak
+        add bx,1 
+        
+        cmp ah,c+2
+        jne capraz1bak   
+        add bx,1
+        
+        cmp bx,3
+        je bitis         
+               
+        
+      capraz1bak:
+        ;Caprazlarin kontrolu
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,a
+        jne capraz2bak   
+        add bx,1
+                  
+        cmp ah,b+1
+        jne capraz2bak
+        add bx,1 
+        
+        cmp ah,c+2
+        jne capraz2bak   
+        add bx,1
+        
+        cmp bx,3
+        je bitis         
+         
+        
+       capraz2bak:
+        ;ikinci caprazin kontrolu
+        mov ah,kontrol 
+        mov bx,0
+        cmp ah,a+2
+        jne kazananyok   
+        add bx,1
+                  
+        cmp ah,b+1
+        jne kazananyok
+        add bx,1 
+        
+        cmp ah,c
+        jne kazananyok   
+        add bx,1
+        
+        cmp bx,3
+        je bitis
+        
+        
+        
+        bitis:
+            cmp kontrol,2
+            je xkazandi
+            jne okazandi
+            xkazandi:
+                yazdir 16,2,0000_1111b, "x kazandi"
+                jmp exit
+            okazandi:
+                yazdir 16,2,0000_1111b, "o kazandi"
+            exit: 
+                mov ah,4ch
+                int 21h    
+                
+                
+         kazananyok:  
+            Ret     ;basa geri donus
+           
+         endp
+           
+                
+                                                       
+ends
+end start 
